@@ -102,7 +102,11 @@ class CLIP(nn.Module):
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
         # TODO: implement the rest components
-        raise NotImplementedError("Not implemented")
+        vision_dim = vision_encoder.config.hidden_size
+        text_dim = text_encoder.config.hidden_size
+        self.vision_proj = nn.Linear(vision_dim, proj_dim)
+        self.text_proj = nn.Linear(text_dim, proj_dim)
+        self.logit_scale = nn.Parameter(torch.tensor(1.0 / temperature).log())
 
     def encode_image(self, image: torch.Tensor) -> torch.Tensor:
         return self.vision_encoder(image)
@@ -180,7 +184,18 @@ class CLIP(nn.Module):
         Returns:
             TODO: think about the what values should be returned
         """
-        raise NotImplementedError("Not implemented")
+        # Encode image: use CLS token output from vision encoder
+        vision_out = self.vision_encoder(pixel_values=pixel_values).last_hidden_state[:, 0, :]
+        vision_feat = nn.functional.normalize(self.vision_proj(vision_out), dim=-1)
+
+        # Encode text: use last non-padding token output from text encoder
+        text_out = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+        # gather last real token per sequence
+        seq_lengths = attention_mask.sum(dim=1) - 1
+        text_pooled = text_out[torch.arange(text_out.size(0)), seq_lengths]
+        text_feat = nn.functional.normalize(self.text_proj(text_pooled), dim=-1)
+
+        return vision_feat, text_feat, self.logit_scale.exp()
 
 
 def compute_clip_loss(
@@ -199,7 +214,14 @@ def compute_clip_loss(
     Returns:
         The loss for the CLIP model.
     """
-    raise NotImplementedError("Not implemented")
+    vision_feat, text_feat, logit_scale = outputs
+    # Similarity matrix: (batch, batch)
+    logits = logit_scale * torch.matmul(vision_feat, text_feat.T)
+    # Diagonal entries are the correct image-text pairs
+    targets = torch.arange(logits.size(0), device=logits.device)
+    loss_i2t = nn.functional.cross_entropy(logits, targets)
+    loss_t2i = nn.functional.cross_entropy(logits.T, targets)
+    return (loss_i2t + loss_t2i) / 2
 
 
 def get_target_modules_for_lora(model: nn.Module) -> list[str]:
