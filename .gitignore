@@ -1,0 +1,6 @@
+data/train/*.jpg
+data/valid/*.jpg
+data/train/*_info.json
+venv/
+__pycache__/
+*.zip
