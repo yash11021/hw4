@@ -243,16 +243,16 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
 
     # 2. Total karts question
     # How many karts are there in the scenario?
-    qa_pairs.append({"question": "How many karts are there in the scenario?", "answer": str(len(karts))})
+    kart_objects_all = extract_kart_objects(info_path, view_index, img_width, img_height)
+    qa_pairs.append({"question": "How many karts are there in the scenario?", "answer": str(len(kart_objects_all))})
 
     # 3. Track information questions
     # What track is this?
     qa_pairs.append({"question": "What track is this?", "answer": info["track"]})
 
     # Get visible non-ego karts for positional questions
-    kart_objects = extract_kart_objects(info_path, view_index, img_width, img_height)
     img_cx = img_width / 2
-    others = [k for k in kart_objects if k["instance_id"] != view_index]
+    others = [k for k in kart_objects_all if k["instance_id"] != view_index]
 
     left, right, front, behind = [], [], [], []
     for k in others:
@@ -260,15 +260,15 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
         cx = k["center"][0]
         other_dist = distances[k["instance_id"]]
         h_side = "left" if cx < img_cx else "right"
-        v_side = "front" if other_dist > ego_dist else "behind"
+        v_side = "front" if other_dist > ego_dist else "back"
 
         # 4. Relative position questions for each kart
         # Is {kart_name} to the left or right of the ego car?
         qa_pairs.append({"question": f"Is {name} to the left or right of the ego car?", "answer": h_side})
         # Is {kart_name} in front of or behind the ego car?
-        qa_pairs.append({"question": f"Is {name} in front of or behind the ego car?", "answer": v_side})
+        qa_pairs.append({"question": f"Is {name} in front of or behind the ego car?", "answer": "behind" if v_side == "back" else v_side})
         # Where is {kart_name} relative to the ego car?
-        qa_pairs.append({"question": f"Where is {name} relative to the ego car?", "answer": f"{v_side} {h_side}"})
+        qa_pairs.append({"question": f"Where is {name} relative to the ego car?", "answer": f"{v_side} and {h_side}"})
 
         (left if h_side == "left" else right).append(name)
         (front if v_side == "front" else behind).append(name)
