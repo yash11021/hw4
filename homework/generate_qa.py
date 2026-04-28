@@ -266,7 +266,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
         # Is {kart_name} to the left or right of the ego car?
         qa_pairs.append({"question": f"Is {name} to the left or right of the ego car?", "answer": h_side})
         # Is {kart_name} in front of or behind the ego car?
-        qa_pairs.append({"question": f"Is {name} in front of or behind the ego car?", "answer": "behind" if v_side == "back" else v_side})
+        qa_pairs.append({"question": f"Is {name} in front of or behind the ego car?", "answer": v_side})
         # Where is {kart_name} relative to the ego car?
         qa_pairs.append({"question": f"Where is {name} relative to the ego car?", "answer": f"{v_side} and {h_side}"})
 
